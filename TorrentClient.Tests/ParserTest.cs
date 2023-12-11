@@ -36,7 +36,7 @@ public class Tests
     public Task ParseInput_ReturnsExpectedResult(string input, object expected)
     {
         // Act & Assert
-        Assert.That(_parser.Decode<object>(CreateStream(input)), Is.EqualTo(expected));
+        Assert.That(_parser.Decode(CreateStream(input)), Is.EqualTo(expected));
         return Task.CompletedTask;
     }
 

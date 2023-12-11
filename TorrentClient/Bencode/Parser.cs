@@ -2,13 +2,16 @@ using System.Buffers;
 using System.IO.Pipelines;
 using System.Text;
 using System.Text.Json;
+using TorrentClient.Models;
+using TorrentClient.Types;
+using TorrentClient.Types.Bencoded;
 
 namespace TorrentClient.Bencode;
 
 public class Parser : IParser
 {
     
-    public T Decode<T>(Stream stream)
+    public Torrent Decode(Stream stream)
     {
         var bufferArray = Utility.ReadStream(stream);
         
@@ -16,12 +19,14 @@ public class Parser : IParser
         
         var span = memory.Span;
         
-        var decodedValue = Decode<T>(span);
+        var decodedValue = Decode(span);
         
-        return decodedValue;
+        // use utility to convert to torrent, here we use T as generic, so we can use it for any type
+        var torrent = Utility.ConvertToTorrent(decodedValue);
+        return torrent;
     }
 
-    public string DecodeString(ReadOnlySpan<byte> encoded, ref int currentIndex)
+    public BencodedString DecodeString(ReadOnlySpan<byte> encoded, ref int currentIndex)
     {
         var colonIndex = encoded[currentIndex..].IndexOf((byte)':');
         if (colonIndex == -1)
@@ -42,10 +47,10 @@ public class Parser : IParser
 
         currentIndex = colonIndex + 1 + strLength;
  
-        return strValue;
+        return new BencodedString(strValue);
     }
 
-    public long DecodeInteger(ReadOnlySpan<byte> encoded, ref int currentIndex)
+    public BencodedInteger DecodeInteger(ReadOnlySpan<byte> encoded, ref int currentIndex)
     {
         if (encoded[currentIndex] != (byte)'i')
             throw new InvalidOperationException("Invalid encoded integer");
@@ -58,39 +63,40 @@ public class Parser : IParser
             throw new InvalidOperationException("Invalid encoded integer");
         currentIndex += exclusiveEndIndex + 1;
 
-        return long.Parse(Encoding.UTF8.GetString(encoded[..exclusiveEndIndex]));
+        // return long.Parse(Encoding.UTF8.GetString(encoded[..exclusiveEndIndex]));
+        // return bencoded version
+        return new BencodedInteger(long.Parse(Encoding.UTF8.GetString(encoded[..exclusiveEndIndex])));
     }
 
-    public IEnumerable<T> DecodeList<T>(ReadOnlySpan<byte> encoded, ref int currentIndex)
+    // rewrite decodelist with blist and generic
+    public BencodedList<IBencodedBase> DecodeList(ReadOnlySpan<byte> encoded, ref int currentIndex)
     {
         if (encoded[currentIndex] != (byte)'l')
             throw new InvalidOperationException("Invalid encoded list");
 
         var listContent = encoded[(currentIndex + 1)..];
-        var elements = new List<T>();
+        var list = new BencodedList<IBencodedBase>();
         var innerIndex = 0;
 
         while (innerIndex < listContent.Length && listContent[innerIndex] != (byte)'e')
         {
-            var element = GetNextElement<T>(listContent, ref innerIndex);
-
-            // Add each element to the elements list
-            elements.Add(element);
+            var value = GetNextElement(listContent, ref innerIndex);
+            list.Value.Add(value);
         }
 
         // Move the outer index past the 'e' character
         currentIndex += innerIndex + 1;
 
-        return elements;
+        return list;
     }
 
-    public Dictionary<string, T> DecodeDictionary<T>(ReadOnlySpan<byte> encoded, ref int currentIndex)
+    public BencodedDictionary<BencodedString, IBencodedBase> DecodeDictionary(ReadOnlySpan<byte> encoded, ref int currentIndex)
     {
         if (encoded[currentIndex] != (byte)'d')
             throw new InvalidOperationException("Invalid encoded dictionary");
 
         var dictContent = encoded[(currentIndex + 1)..];
-        var dictionary = new Dictionary<string, T>();
+        var dictionary = new Dictionary<BencodedString, IBencodedBase>();
         var innerIndex = 0;
 
         while (innerIndex < dictContent.Length && dictContent[innerIndex] != (byte)'e')
@@ -99,7 +105,7 @@ public class Parser : IParser
             var key = DecodeString(dictContent, ref innerIndex);
 
             // Decode value
-            var value = GetNextElement<T>(dictContent, ref innerIndex);
+            var value = GetNextElement(dictContent, ref innerIndex);
 
             // Add key-value pair to dictionary
             dictionary[key] = value;
@@ -108,32 +114,31 @@ public class Parser : IParser
         // Move the outer index past the 'e' character
         currentIndex += innerIndex + 1;
 
-        return dictionary;
+        return new BencodedDictionary<BencodedString, IBencodedBase>(dictionary);
     }
     
 
-    public T GetNextElement<T>(ReadOnlySpan<byte> encoded, ref int currentIndex)
+    public IBencodedBase GetNextElement(ReadOnlySpan<byte> encoded, ref int currentIndex)
     {
-        
         return encoded[currentIndex] switch
         {
-            (byte)'i' => (T)(object)DecodeInteger(encoded, ref currentIndex),
-            (byte)'l' => (T)(object)DecodeList<T>(encoded, ref currentIndex),
-            (byte)'d' => (T)(object)DecodeDictionary<T>(encoded, ref currentIndex),
-            _ => (T)(object)DecodeString(encoded, ref currentIndex)
+            (byte)'i' => DecodeInteger(encoded, ref currentIndex),
+            (byte)'l' => DecodeList(encoded, ref currentIndex),
+            (byte)'d' => DecodeDictionary(encoded, ref currentIndex),
+            _ => DecodeString(encoded, ref currentIndex)
         };
     }
 
-    public T Decode<T>(ReadOnlySpan<byte> encoded)
+    public IBencodedBase Decode(ReadOnlySpan<byte> encoded)
     {
         var currentIndex = 0;
 
         return encoded[0] switch
         {
-            (byte)'i' => (T)(object)DecodeInteger(encoded, ref currentIndex),
-            (byte)'l' => (T)DecodeList<T>(encoded, ref currentIndex),
-            (byte)'d' => (T)(object)DecodeDictionary<T>(encoded, ref currentIndex),
-            _ => (T)(object)DecodeString(encoded, ref currentIndex)
+            (byte)'i' => DecodeInteger(encoded, ref currentIndex),
+            (byte)'l' => DecodeList(encoded, ref currentIndex),
+            (byte)'d' => DecodeDictionary(encoded, ref currentIndex),
+            _ => DecodeString(encoded, ref currentIndex)
         };
     }
 }

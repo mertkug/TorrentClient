@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.FileProviders;
 using TorrentClient.Bencode;
+using TorrentClient.Models;
 
 namespace TorrentClient.Controllers;
 
@@ -35,7 +36,9 @@ public class TorrentController : ControllerBase
             return NotFound();
         }
         var stream = _fileProvider.GetFileInfo(torrentFile).CreateReadStream();
-        var decoded = _parser.Decode<object>(stream);
+        var decoded = _parser.Decode(stream);
         return Ok(decoded);
-    } 
+    }
+    
+
 }
