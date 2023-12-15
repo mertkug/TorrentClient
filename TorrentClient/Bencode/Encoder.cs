@@ -4,7 +4,7 @@ using TorrentClient.Types.Bencoded;
 namespace TorrentClient.Bencode;
 
 
-public class Encoder
+public class Encoder : IEncoder
 {
     public Encoder()
     {
@@ -12,7 +12,7 @@ public class Encoder
     }
     public string Encode(IBencodedBase stringBase)
     {
-        stringBase = stringBase ?? throw new ArgumentNullException(nameof(stringBase));
+        ArgumentNullException.ThrowIfNull(stringBase);
         // call EncodeToString, EncodeToString etc. based on which type coming from base
         return stringBase switch
         {

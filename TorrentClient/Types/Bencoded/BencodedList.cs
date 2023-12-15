@@ -2,7 +2,7 @@ namespace TorrentClient.Types.Bencoded;
 
 public class BencodedList<T> : IBencodedBase, IEquatable<BencodedList<T>>
 {
-    public List<T> Value { get; set; }
+    public List<T> Value { get; }
     public BencodedList(List<T> value)
     {
         Value = value;
@@ -23,8 +23,7 @@ public class BencodedList<T> : IBencodedBase, IEquatable<BencodedList<T>>
     {
         if (ReferenceEquals(null, obj)) return false;
         if (ReferenceEquals(this, obj)) return true;
-        if (obj.GetType() != this.GetType()) return false;
-        return Equals((BencodedList<T>)obj);
+        return obj.GetType() == this.GetType() && Equals((BencodedList<T>)obj);
     }
 
     public override int GetHashCode()

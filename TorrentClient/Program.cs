@@ -10,6 +10,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<IDecoder, Decoder>();
+builder.Services.AddScoped<IEncoder, Encoder>();
 
 IFileProvider physicalProvider = new PhysicalFileProvider(Directory.GetCurrentDirectory());
 builder.Services.AddSingleton(physicalProvider);
