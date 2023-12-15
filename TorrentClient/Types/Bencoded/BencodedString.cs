@@ -1,6 +1,6 @@
 namespace TorrentClient.Types.Bencoded;
 
-public class BencodedString: IBencodedDictionaryValue, IBencodedBase, IEquatable<BencodedString>
+public class BencodedString: IBencodedBase, IEquatable<BencodedString>
 {
     public string Value { get; }
     public BencodedString(string value)
@@ -19,7 +19,7 @@ public class BencodedString: IBencodedDictionaryValue, IBencodedBase, IEquatable
     {
         if (ReferenceEquals(null, obj)) return false;
         if (ReferenceEquals(this, obj)) return true;
-        return obj.GetType() == this.GetType() && Equals((BencodedString)obj);
+        return obj.GetType() == GetType() && Equals((BencodedString)obj);
     }
 
     public override int GetHashCode()

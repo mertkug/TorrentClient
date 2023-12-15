@@ -1,17 +1,13 @@
-using System.Buffers;
-using System.IO.Pipelines;
 using System.Text;
-using System.Text.Json;
 using TorrentClient.Models;
-using TorrentClient.Types;
 using TorrentClient.Types.Bencoded;
 
 namespace TorrentClient.Bencode;
 
-public class Parser : IParser
+public class Decoder : IDecoder
 {
     
-    public Torrent Decode(Stream stream)
+    public IBencodedBase Decode(Stream stream)
     {
         var bufferArray = Utility.ReadStream(stream);
         
@@ -21,9 +17,7 @@ public class Parser : IParser
         
         var decodedValue = Decode(span);
         
-        // use utility to convert to torrent, here we use T as generic, so we can use it for any type
-        var torrent = Utility.ConvertToTorrent(decodedValue);
-        return torrent;
+        return decodedValue;
     }
 
     public BencodedString DecodeString(ReadOnlySpan<byte> encoded, ref int currentIndex)
@@ -62,13 +56,10 @@ public class Parser : IParser
         if (exclusiveEndIndex == -1)
             throw new InvalidOperationException("Invalid encoded integer");
         currentIndex += exclusiveEndIndex + 1;
-
-        // return long.Parse(Encoding.UTF8.GetString(encoded[..exclusiveEndIndex]));
-        // return bencoded version
+        
         return new BencodedInteger(long.Parse(Encoding.UTF8.GetString(encoded[..exclusiveEndIndex])));
     }
-
-    // rewrite decodelist with blist and generic
+    
     public BencodedList<IBencodedBase> DecodeList(ReadOnlySpan<byte> encoded, ref int currentIndex)
     {
         if (encoded[currentIndex] != (byte)'l')

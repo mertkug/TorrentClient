@@ -23,7 +23,6 @@ public static class Utility
             else
             {
                 Console.WriteLine("The 'announce' key was not found or the value is not of type BencodedString.");
-                // Handle the absence or unexpected type of 'announce' value.
             }
 
             if (dictionary[new BencodedString("info")] is BencodedDictionary<BencodedString, IBencodedBase> infoValue)
@@ -33,13 +32,11 @@ public static class Utility
             else
             {
                 Console.WriteLine("The 'info' key was not found or the value is not of type BencodedDictionary.");
-                // Handle the absence or unexpected type of 'info' value.
             }
         }
         else
         {
             Console.WriteLine("The provided dictionary is not of type BencodedDictionary.");
-            // Handle the case where the input is not a BencodedDictionary.
         }
 
         return torrent;

@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
@@ -13,13 +14,13 @@ public class TorrentController : ControllerBase
 {
     private readonly IFileProvider _fileProvider;
     private readonly ILogger<TorrentController> _logger;
-    private readonly IParser _parser;
+    private readonly IDecoder _decoder;
 
-    public TorrentController(ILogger<TorrentController> logger, IFileProvider fileProvider, IParser parser)
+    public TorrentController(ILogger<TorrentController> logger, IFileProvider fileProvider, IDecoder decoder)
     {
         _fileProvider = fileProvider;
         _logger = logger;
-        _parser = parser;
+        _decoder = decoder;
     }
 
     [HttpGet]
@@ -31,14 +32,6 @@ public class TorrentController : ControllerBase
             .Select(fileInfo => fileInfo.Name)
             .FirstOrDefault();
 
-        if (torrentFile == null)
-        {
-            return NotFound();
-        }
-        var stream = _fileProvider.GetFileInfo(torrentFile).CreateReadStream();
-        var decoded = _parser.Decode(stream);
-        return Ok(decoded);
+        return Ok("decoded");
     }
-    
-
 }

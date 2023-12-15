@@ -1,13 +1,12 @@
-
 using TorrentClient.Models;
-using TorrentClient.Types;
 using TorrentClient.Types.Bencoded;
 
 namespace TorrentClient.Bencode;
 
-public interface IParser
+public interface IDecoder
 {
-    public Torrent Decode(Stream stream);
+    public IBencodedBase Decode(Stream stream);
+
     public BencodedString DecodeString(ReadOnlySpan<byte> encoded, ref int currentIndex);
 
     public BencodedInteger DecodeInteger(ReadOnlySpan<byte> encoded, ref int currentIndex);
