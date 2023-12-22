@@ -1,5 +1,7 @@
+using System.Collections.Specialized;
 using System.Text;
 using TorrentClient.Models;
+using TorrentClient.Types;
 using TorrentClient.Types.Bencoded;
 
 namespace TorrentClient.Bencode;
@@ -19,14 +21,25 @@ public class Decoder : IDecoder
         
         return decodedValue;
     }
+    
+    public IBencodedBase DecodeFromBytes(byte[] input)
+    {
+        var memory = new ReadOnlyMemory<byte>(input);
+        
+        var span = memory.Span;
+        
+        var decodedValue = Decode(span);
+        
+        return decodedValue;
+    }
 
-    public BencodedString DecodeString(ReadOnlySpan<byte> encoded, ref int currentIndex)
+    public IBencodedBase DecodeString(ReadOnlySpan<byte> encoded, ref int currentIndex)
     {
         var colonIndex = encoded[currentIndex..].IndexOf((byte)':');
         if (colonIndex == -1)
             throw new InvalidOperationException("Invalid encoded value");
         colonIndex += currentIndex; // Relative to start
- 
+
         var strLengthStr = Encoding.UTF8.GetString(encoded.Slice(currentIndex, colonIndex - currentIndex));
         if (!int.TryParse(strLengthStr, out var strLength))
             throw new InvalidOperationException("Invalid length value");
@@ -37,13 +50,22 @@ public class Decoder : IDecoder
         {
             buffer[i] = encoded[colonIndex + 1 + i];
         }
+
         var strValue = Encoding.UTF8.GetString(buffer);
 
+        // Check if the string contains non-ASCII characters
+        if (Utility.ContainsNonAscii(strValue))
+        {
+            Console.WriteLine(strValue);
+            currentIndex = colonIndex + 1 + strLength;
+
+            return new BencodedByteStream(buffer);
+        }
+
         currentIndex = colonIndex + 1 + strLength;
- 
+
         return new BencodedString(strValue);
     }
-
     public BencodedInteger DecodeInteger(ReadOnlySpan<byte> encoded, ref int currentIndex)
     {
         if (encoded[currentIndex] != (byte)'i')
@@ -87,13 +109,13 @@ public class Decoder : IDecoder
             throw new InvalidOperationException("Invalid encoded dictionary");
 
         var dictContent = encoded[(currentIndex + 1)..];
-        var dictionary = new Dictionary<BencodedString, IBencodedBase>();
+        var dictionary = new OrderedDictionary<BencodedString, IBencodedBase>();
         var innerIndex = 0;
 
         while (innerIndex < dictContent.Length && dictContent[innerIndex] != (byte)'e')
         {
             // Decode key
-            var key = DecodeString(dictContent, ref innerIndex);
+            var key = (BencodedString)DecodeString(dictContent, ref innerIndex);
 
             // Decode value
             var value = GetNextElement(dictContent, ref innerIndex);

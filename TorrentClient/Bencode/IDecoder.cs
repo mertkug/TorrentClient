@@ -6,8 +6,9 @@ namespace TorrentClient.Bencode;
 public interface IDecoder
 {
     public IBencodedBase Decode(Stream stream);
+    public IBencodedBase DecodeFromBytes(byte[] input);
 
-    public BencodedString DecodeString(ReadOnlySpan<byte> encoded, ref int currentIndex);
+    public IBencodedBase DecodeString(ReadOnlySpan<byte> encoded, ref int currentIndex);
 
     public BencodedInteger DecodeInteger(ReadOnlySpan<byte> encoded, ref int currentIndex);
     public BencodedList<IBencodedBase> DecodeList(ReadOnlySpan<byte> encoded, ref int currentIndex);

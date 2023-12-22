@@ -1,6 +1,6 @@
 namespace TorrentClient.Types.Bencoded;
 
-public class BencodedInteger: IBencodedBase, IEquatable<BencodedInteger>
+public class BencodedInteger: IBencodedBase, IEquatable<BencodedInteger>, IComparable<BencodedInteger>
 {
     public long Value { get; }
     public BencodedInteger(long value)
@@ -29,5 +29,11 @@ public class BencodedInteger: IBencodedBase, IEquatable<BencodedInteger>
     public override int GetHashCode()
     {
         return Value.GetHashCode();
+    }
+
+    public int CompareTo(BencodedInteger? other)
+    {
+        if (ReferenceEquals(this, other)) return 0;
+        return ReferenceEquals(null, other) ? 1 : Value.CompareTo(other.Value);
     }
 }

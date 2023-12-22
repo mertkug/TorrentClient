@@ -2,9 +2,14 @@ namespace TorrentClient.Types.Bencoded;
 
 public class BencodedDictionary<TY, T> : IBencodedBase, IEquatable<BencodedDictionary<TY, T>> where TY : notnull where T : IBencodedBase
 {
-    public Dictionary<TY, T> Value { get; }
+    public OrderedDictionary<TY, T> Value { get; }
 
-    public BencodedDictionary(Dictionary<TY, T> value)
+    public BencodedDictionary()
+    {
+        Value = new OrderedDictionary<TY, T>();
+    }
+
+    public BencodedDictionary(OrderedDictionary<TY, T> value)
     {
         Value = value;
     }
@@ -38,7 +43,7 @@ public class BencodedDictionary<TY, T> : IBencodedBase, IEquatable<BencodedDicti
     public override int GetHashCode()
     {
         // Combine hash codes of key-value pairs
-        int hashCode = 17;
+        var hashCode = 17;
 
         foreach (var pair in Value)
         {

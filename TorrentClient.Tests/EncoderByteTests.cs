@@ -1,10 +1,11 @@
-using TorrentClient.Bencode;
+using System.Text;
 using TorrentClient.Types;
 using TorrentClient.Types.Bencoded;
+using Encoder = TorrentClient.Bencode.Encoder;
 
 namespace TorrentClient.Tests;
 
-public class EncoderTests
+public class EncoderByteTests
 {
     private static IEnumerable<object[]> TestCases()
     {
@@ -13,9 +14,9 @@ public class EncoderTests
             EntityCreator.CreateBencodedDictionary(new OrderedDictionary<BencodedString, IBencodedBase>
             {
                 { new BencodedString("cow"), new BencodedString("moo") },
-                { new BencodedString("spam"), new BencodedString("eggs") }
+                { new BencodedString("spam"), new BencodedByteStream("eggs"u8.ToArray()) }
             }),
-            "d3:cow3:moo4:spam4:eggse"
+            "d3:cow3:moo4:spam4:eggse"u8.ToArray()
         };
     }
     [Test]
@@ -23,8 +24,10 @@ public class EncoderTests
     public Task ParseInput_ReturnsExpectedResult(IBencodedBase input, object expected)
     {
         Encoder encoder = new();
+        var bytes = encoder.EncodeToBytes(input);
+        Console.WriteLine(Encoding.UTF8.GetString(bytes));
         // Act & Assert
-        Assert.That(encoder.Encode(input), Is.EqualTo(expected));
+        Assert.That(encoder.EncodeToBytes(input), Is.EqualTo(expected));
         return Task.CompletedTask;
     }
 }
