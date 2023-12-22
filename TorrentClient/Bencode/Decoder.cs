@@ -109,7 +109,7 @@ public class Decoder : IDecoder
             throw new InvalidOperationException("Invalid encoded dictionary");
 
         var dictContent = encoded[(currentIndex + 1)..];
-        var dictionary = new OrderedDictionary<BencodedString, IBencodedBase>();
+        var dictionary = new SortedDictionary<BencodedString, IBencodedBase>();
         var innerIndex = 0;
 
         while (innerIndex < dictContent.Length && dictContent[innerIndex] != (byte)'e')

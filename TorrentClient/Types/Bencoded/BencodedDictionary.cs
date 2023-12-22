@@ -2,14 +2,14 @@ namespace TorrentClient.Types.Bencoded;
 
 public class BencodedDictionary<TY, T> : IBencodedBase, IEquatable<BencodedDictionary<TY, T>> where TY : notnull where T : IBencodedBase
 {
-    public OrderedDictionary<TY, T> Value { get; }
+    public SortedDictionary<TY, T> Value { get; }
 
     public BencodedDictionary()
     {
-        Value = new OrderedDictionary<TY, T>();
+        Value = new SortedDictionary<TY, T>();
     }
 
-    public BencodedDictionary(OrderedDictionary<TY, T> value)
+    public BencodedDictionary(SortedDictionary<TY, T> value)
     {
         Value = value;
     }

@@ -5,7 +5,7 @@ namespace TorrentClient.Tests;
 
 public static class EntityCreator
 {
-    public static BencodedDictionary<BencodedString, IBencodedBase> CreateBencodedDictionary(OrderedDictionary<BencodedString, IBencodedBase> items)
+    public static BencodedDictionary<BencodedString, IBencodedBase> CreateBencodedDictionary(SortedDictionary<BencodedString, IBencodedBase> items)
     {
         return new BencodedDictionary<BencodedString, IBencodedBase>(items);
     }

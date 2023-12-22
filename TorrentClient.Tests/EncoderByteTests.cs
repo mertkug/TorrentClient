@@ -11,7 +11,7 @@ public class EncoderByteTests
     {
         yield return new object[]
         {
-            EntityCreator.CreateBencodedDictionary(new OrderedDictionary<BencodedString, IBencodedBase>
+            EntityCreator.CreateBencodedDictionary(new SortedDictionary<BencodedString, IBencodedBase>
             {
                 { new BencodedString("cow"), new BencodedString("moo") },
                 { new BencodedString("spam"), new BencodedByteStream("eggs"u8.ToArray()) }

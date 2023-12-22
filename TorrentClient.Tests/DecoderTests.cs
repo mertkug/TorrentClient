@@ -16,7 +16,7 @@ public class Tests
         yield return new object[]
         {
             "d3:cow3:moo4:spam4:eggse",
-            EntityCreator.CreateBencodedDictionary(new OrderedDictionary<BencodedString, IBencodedBase>
+            EntityCreator.CreateBencodedDictionary(new SortedDictionary<BencodedString, IBencodedBase>
             {
                 { new BencodedString("cow"), new BencodedString("moo") },
                 { new BencodedString("spam"), new BencodedString("eggs") }
@@ -25,7 +25,7 @@ public class Tests
         yield return new object[]
         {
             "d3:cowi12e4:spam4:eggse",
-            EntityCreator.CreateBencodedDictionary(new OrderedDictionary<BencodedString, IBencodedBase>
+            EntityCreator.CreateBencodedDictionary(new SortedDictionary<BencodedString, IBencodedBase>
             {
                 { new BencodedString("cow"), new BencodedInteger(12) },
                 { new BencodedString("spam"), new BencodedString("eggs") }
@@ -34,7 +34,7 @@ public class Tests
         yield return new object[]
         {
             "d4:spaml1:a1:bee",
-            EntityCreator.CreateBencodedDictionary(new OrderedDictionary<BencodedString, IBencodedBase>
+            EntityCreator.CreateBencodedDictionary(new SortedDictionary<BencodedString, IBencodedBase>
             {
                 { new BencodedString("spam"), EntityCreator.CreateBencodedList(
                     new List<IBencodedBase>
@@ -47,7 +47,7 @@ public class Tests
         yield return new object[]
         {
             "d9:publisher3:bob17:publisher-webpage15:www.example.com18:publisher.location4:homee",
-            EntityCreator.CreateBencodedDictionary(new OrderedDictionary<BencodedString, IBencodedBase>
+            EntityCreator.CreateBencodedDictionary(new SortedDictionary<BencodedString, IBencodedBase>
             {
                 { new BencodedString("publisher"), new BencodedString("bob") },
                 { new BencodedString("publisher-webpage"), new BencodedString("www.example.com") },
