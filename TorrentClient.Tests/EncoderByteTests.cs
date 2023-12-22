@@ -24,8 +24,6 @@ public class EncoderByteTests
     public Task ParseInput_ReturnsExpectedResult(IBencodedBase input, object expected)
     {
         Encoder encoder = new();
-        var bytes = encoder.EncodeToBytes(input);
-        Console.WriteLine(Encoding.UTF8.GetString(bytes));
         // Act & Assert
         Assert.That(encoder.EncodeToBytes(input), Is.EqualTo(expected));
         return Task.CompletedTask;

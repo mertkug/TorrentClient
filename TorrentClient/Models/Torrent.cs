@@ -6,13 +6,13 @@ namespace TorrentClient.Models;
 
 public class Torrent
 {
-    private Lazy<string> _someHash = new(() => string.Empty);
+    private Lazy<string> _lazyHash = new(() => string.Empty);
 
     public string? Announce { get; set; }
     public TorrentInfo Info { get; set; }
 
-    public string InfoHash => _someHash.Value;
-
+    public string InfoHash => _lazyHash.Value;
+    
     public void SetInfo(TorrentInfo info)
     {
         Info = info;
@@ -20,14 +20,7 @@ public class Torrent
     
     public void SetInfoHash(string infoHash)
     {
-        _someHash = new Lazy<string>(() => infoHash);
-    }
-    
-    private static string CalculateInfoHash(byte[] encodedByte)
-    {
-        var hash = SHA1.HashData(encodedByte);
-        var hexData = Convert.ToHexString(hash);
-        return hexData;
+        _lazyHash = new Lazy<string>(() => infoHash);
     }
 
 }

@@ -1,6 +1,4 @@
 using System.Security.Cryptography;
-using System.Text;
-using TorrentClient.Bencode;
 using TorrentClient.Models;
 using TorrentClient.Types.Bencoded;
 using Encoder = TorrentClient.Bencode.Encoder;
@@ -61,14 +59,20 @@ public class TorrentService : ITorrentService
         info.Length = length.Value;
         var name = (BencodedString) dictionary.Value[new BencodedString("name")];
         info.Name = name.Value;
-        
+
+        for (var i = 0; i < info.Pieces.Length; i += 20)
+        {
+            var pieceBytes = new byte[20];
+            info.Pieces.AsSpan(i, 20).CopyTo(pieceBytes);
+            info.SetPiecesHash(info.PiecesHash.Append(Convert.ToHexString(pieceBytes)).ToArray());
+        }
         return info;
     }
-    public static string CalculateInfoHashFromBytes(byte[] infoBytes)
+
+    private static string CalculateInfoHashFromBytes(byte[] infoBytes)
     {
         var hash = SHA1.HashData(infoBytes);
         var hexData = Convert.ToHexString(hash);
-        Console.WriteLine(hexData);
         return hexData;
     }
 }

@@ -12,10 +12,18 @@ public class Encoder
         
     }
     
+    /// <summary>
+    /// Encodes the given <see cref="IBencodedBase"/> to a string.
+    /// </summary>
+    /// <param name="stringBase">The <see cref="IBencodedBase"/> instance to be encoded.</param>
+    /// <returns>A string representing the encoded data.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="stringBase"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the type of <paramref name="stringBase"/> is invalid.</exception>
     public string Encode(IBencodedBase stringBase)
     {
         ArgumentNullException.ThrowIfNull(stringBase);
-        // call EncodeToString, EncodeToString etc. based on which type coming from base
+
+        // Call EncodeToString, EncodeToInteger, etc., based on the type coming from the base.
         return stringBase switch
         {
             BencodedString bencodedString => EncodeToString(bencodedString),
@@ -26,6 +34,7 @@ public class Encoder
             _ => throw new InvalidOperationException("Invalid type")
         };
     }
+
     private string EncodeToDictionary(BencodedDictionary<BencodedString, IBencodedBase> bencodedDictionary)
     {
         return $"d{string.Join("", bencodedDictionary.Value.Select(x => $"{Encode(x.Key)}{Encode(x.Value)}"))}e";
@@ -46,11 +55,18 @@ public class Encoder
         return $"{bencodedString.Value.Length}:{bencodedString.Value}";
     }
     
+    /// <summary>
+    /// Encodes the given <see cref="IBencodedBase"/> to a byte array.
+    /// </summary>
+    /// <param name="stringBase">The <see cref="IBencodedBase"/> instance to be encoded.</param>
+    /// <returns>A byte array representing the encoded data.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="stringBase"/> is null</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the type of <paramref name="stringBase"/> is invalid.</exception>
     public byte[] EncodeToBytes(IBencodedBase stringBase)
     {
         ArgumentNullException.ThrowIfNull(stringBase);
 
-        // call EncodeToString, EncodeToString etc. based on which type is coming from the base
+        // Call EncodeStringToBytes, EncodeIntegerToBytes, etc., based on the type coming from the base.
         return stringBase switch
         {
             BencodedString bencodedString => EncodeStringToBytes(bencodedString),
@@ -78,16 +94,14 @@ public class Encoder
         return result.ToArray();
     }
     
-    private byte[] EncodeByteStreamToBytes(BencodedByteStream bencodedByteStream)
+    private static byte[] EncodeByteStreamToBytes(BencodedByteStream bencodedByteStream)
     {
-        var lengthBytes = Encoding.UTF8.GetBytes($"{bencodedByteStream.Value.Length}:");
+        Span<byte> lengthBytes = Encoding.UTF8.GetBytes($"{bencodedByteStream.Value.Length}:");
         var resultArr = new byte[lengthBytes.Length + bencodedByteStream.Value.Length];
 
         // Copy the length bytes to resultArr
-        Array.Copy(lengthBytes, resultArr, lengthBytes.Length);
-
-        // Copy the value bytes to resultArr
-        Array.Copy(bencodedByteStream.Value, 0, resultArr, lengthBytes.Length, bencodedByteStream.Value.Length);
+        lengthBytes.CopyTo(resultArr); // defaults to the start if not specified :)
+        bencodedByteStream.Value.CopyTo(resultArr, lengthBytes.Length);
 
         return resultArr;
     }
