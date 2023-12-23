@@ -13,7 +13,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<IDecoder, Decoder>();
 builder.Services.AddScoped<Encoder>();
-builder.Services.AddScoped<ITorrentService, TorrentService>();
+builder.Services.AddScoped<TorrentService>();
 builder.Services.AddScoped<TcpListener>();
 
 IFileProvider physicalProvider = new PhysicalFileProvider(Directory.GetCurrentDirectory());

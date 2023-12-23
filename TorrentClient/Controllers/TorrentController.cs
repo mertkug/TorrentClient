@@ -18,13 +18,13 @@ public class TorrentController : ControllerBase
     private readonly IFileProvider _fileProvider;
     private readonly ILogger<TorrentController> _logger;
     private readonly IDecoder _decoder;
-    private readonly ITorrentService _torrentService;
+    private readonly TorrentService _torrentService;
     private readonly TcpListener _tcpListener;
 
     public TorrentController(ILogger<TorrentController> logger, 
         IFileProvider fileProvider, 
         IDecoder decoder,
-        ITorrentService torrentService,
+        TorrentService torrentService,
         TcpListener tcpListener)
     {
         _fileProvider = fileProvider;

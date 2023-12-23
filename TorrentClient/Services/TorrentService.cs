@@ -9,7 +9,7 @@ using Encoder = TorrentClient.Bencode.Encoder;
 
 namespace TorrentClient.Services;
 
-public class TorrentService : ITorrentService
+public class TorrentService
 {
     private readonly Encoder _encoder;
     private readonly IDecoder _decoder;
@@ -28,8 +28,8 @@ public class TorrentService : ITorrentService
             if (dictionary[new BencodedString("info")] is BencodedDictionary<BencodedString, IBencodedBase> infoValue)
             {
                 var info = ConvertToTorrentInfo(infoValue);
-                torrent.SetInfo(info);
-                torrent.SetInfoHash(Utility.CalculateInfoHashFromBytes(_encoder.EncodeToBytes(infoValue)));
+                torrent.Info = info;
+                torrent.InfoHash = Utility.CalculateInfoHashFromBytes(_encoder.EncodeToBytes(infoValue));
             }
             else
             {
