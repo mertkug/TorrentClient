@@ -1,6 +1,7 @@
 using Microsoft.Extensions.FileProviders;
 using TorrentClient.Bencode;
 using TorrentClient.Services;
+using TorrentClient.Tcp;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +14,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<IDecoder, Decoder>();
 builder.Services.AddScoped<Encoder>();
 builder.Services.AddScoped<ITorrentService, TorrentService>();
+builder.Services.AddScoped<TcpListener>();
 
 IFileProvider physicalProvider = new PhysicalFileProvider(Directory.GetCurrentDirectory());
 builder.Services.AddSingleton(physicalProvider);

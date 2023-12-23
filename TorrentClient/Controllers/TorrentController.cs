@@ -4,7 +4,11 @@ using TorrentClient.Bencode;
 using TorrentClient.Services;
 using Encoder = TorrentClient.Bencode.Encoder;
 using System.IO;
-using System; 
+using System;
+using TorrentClient.Models;
+using TorrentClient.Tcp;
+using TorrentClient.Types.Bencoded;
+
 namespace TorrentClient.Controllers;
 
 [ApiController]
@@ -15,13 +19,19 @@ public class TorrentController : ControllerBase
     private readonly ILogger<TorrentController> _logger;
     private readonly IDecoder _decoder;
     private readonly ITorrentService _torrentService;
+    private readonly TcpListener _tcpListener;
 
-    public TorrentController(ILogger<TorrentController> logger, IFileProvider fileProvider, IDecoder decoder, ITorrentService torrentService)
+    public TorrentController(ILogger<TorrentController> logger, 
+        IFileProvider fileProvider, 
+        IDecoder decoder,
+        ITorrentService torrentService,
+        TcpListener tcpListener)
     {
         _fileProvider = fileProvider;
         _logger = logger;
         _decoder = decoder;
         _torrentService = torrentService;
+        _tcpListener = tcpListener;
     }
 
     [HttpGet]
@@ -36,10 +46,12 @@ public class TorrentController : ControllerBase
         // read torrent file as stream
         var allBytes = await System.IO.File.ReadAllBytesAsync(torrentFile);
         var decoded = _decoder.DecodeFromBytes(allBytes);
-        // Console.WriteLine(decoded);
-        // allBytes[104..233]
-        var torrent = _torrentService.ConvertToTorrent(decoded, allBytes[104..233]);
-        Console.WriteLine(torrent);
-        return Ok(torrent.InfoHash);
+        
+        var torrent = _torrentService.ConvertToTorrent(decoded);
+        _torrentService.SetPeers(torrent, await _torrentService.GetPeers(torrent));
+        var bytes = _tcpListener.PerformHandShake(torrent.Peers[0].Port, torrent.Peers[0].IpAddress, Client.PeerId, torrent.InfoHash);
+        var obj = TcpListener.ParseResponse(bytes);
+        
+        return Ok(obj);
     }
 }

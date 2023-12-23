@@ -1,5 +1,9 @@
-using System.Security.Cryptography;
+using System.Buffers.Binary;
+using System.Net;
+using System.Web;
+using TorrentClient.Bencode;
 using TorrentClient.Models;
+using TorrentClient.Types;
 using TorrentClient.Types.Bencoded;
 using Encoder = TorrentClient.Bencode.Encoder;
 
@@ -8,13 +12,15 @@ namespace TorrentClient.Services;
 public class TorrentService : ITorrentService
 {
     private readonly Encoder _encoder;
+    private readonly IDecoder _decoder;
 
-    public TorrentService(Encoder encoder)
+    public TorrentService(Encoder encoder, IDecoder decoder)
     {
         _encoder = encoder;
+        _decoder = decoder;
     }
 
-    public Torrent ConvertToTorrent(IBencodedBase torrentDictionary, byte[] encodedBytes)
+    public Torrent ConvertToTorrent(IBencodedBase torrentDictionary)
     {
         var torrent = new Torrent();
         if (torrentDictionary is BencodedDictionary<BencodedString, IBencodedBase> dictionary)
@@ -23,7 +29,7 @@ public class TorrentService : ITorrentService
             {
                 var info = ConvertToTorrentInfo(infoValue);
                 torrent.SetInfo(info);
-                torrent.SetInfoHash(CalculateInfoHashFromBytes(_encoder.EncodeToBytes(infoValue)));
+                torrent.SetInfoHash(Utility.CalculateInfoHashFromBytes(_encoder.EncodeToBytes(infoValue)));
             }
             else
             {
@@ -62,17 +68,69 @@ public class TorrentService : ITorrentService
 
         for (var i = 0; i < info.Pieces.Length; i += 20)
         {
-            var pieceBytes = new byte[20];
-            info.Pieces.AsSpan(i, 20).CopyTo(pieceBytes);
-            info.SetPiecesHash(info.PiecesHash.Append(Convert.ToHexString(pieceBytes)).ToArray());
+            var pieceSpan = info.Pieces.AsSpan(i, 20);
+            var pieceHashArray = info.PiecesHash.Append(Convert.ToHexString(pieceSpan)).ToArray();
+            info.SetPiecesHash(pieceHashArray);
         }
         return info;
     }
-
-    private static string CalculateInfoHashFromBytes(byte[] infoBytes)
+    
+    private static async Task<byte[]> DiscoverPeers(Torrent torrent)
     {
-        var hash = SHA1.HashData(infoBytes);
-        var hexData = Convert.ToHexString(hash);
-        return hexData;
+        var client = new HttpClient();
+
+        var uriBuilder = new UriBuilder(torrent.Announce);
+        var query = HttpUtility.ParseQueryString(uriBuilder.Query);
+        var peerId = Utility.GeneratePeerId();
+        Client.PeerId = peerId;
+        query["peer_id"] = peerId;
+        query["port"] = "6881";
+        query["uploaded"] = "0";
+        query["downloaded"] = "0";
+        query["left"] = torrent.Info.Length.ToString();
+        query["compact"] = "1";
+        uriBuilder.Query = query.ToString();
+        var infoHash = HttpUtility.UrlEncode(Convert.FromHexString(torrent.InfoHash));
+        var announceUrl = uriBuilder + $"&info_hash={infoHash}";
+        
+        try
+        {
+            var response = await client.GetAsync(announceUrl);
+            response.EnsureSuccessStatusCode();
+
+            await using var contentStream = await response.Content.ReadAsStreamAsync();
+            using var reader = new BinaryReader(contentStream);
+            return reader.ReadBytes((int)contentStream.Length);
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+            return null;
+        }
+    }
+    
+    public async Task<byte[]> GetPeers(Torrent torrent)
+    {
+        var peers = await DiscoverPeers(torrent);
+        var peerDict = (BencodedDictionary<BencodedString, IBencodedBase>)_decoder.DecodeFromBytes(peers);
+        var peerStream = (BencodedByteStream)peerDict.Value[new BencodedString("peers")];
+        return peerStream.Value;
+    }
+    
+    public void SetPeers(Torrent torrent, byte[] peers)
+    {
+        var peersList = new List<Peer>();
+        for (var i = 0; i < peers.Length; i += 6)
+        {
+            var peerSpan = peers.AsSpan(i, 6);
+            
+            var peer = new Peer
+            {
+                IpAddress = new IPAddress(peerSpan[..4]),
+                Port = BinaryPrimitives.ReadUInt16BigEndian(peerSpan[4..])
+            };
+            peersList.Add(peer);
+        }
+        torrent.Peers = peersList;
     }
 }
