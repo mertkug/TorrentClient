@@ -50,18 +50,17 @@ public class TcpListener
     /// Response from peer
     /// </param>
     /// <returns>
-    /// Anonymous type structured with: { protocol: string, reserved: string, infoHash: string, peerId: string }
+    /// Anonymous type structured as: { protocol: string, infoHash: string, peerId: string }
     /// </returns>
     public static object ParseResponse(byte[] response)
     {
         var protocol = Encoding.UTF8.GetString(response[1..20]);
-        var reserved = Encoding.UTF8.GetString(response[20..28]);
+        // 8 bytes after this reserved, but it's all 0s, so we can ignore it
         var infoHash = Convert.ToHexString(response[28..48]);
         var peerId = Convert.ToHexString(response[48..]);
         return new
         {
             protocol,
-            reserved,
             infoHash,
             peerId
         };

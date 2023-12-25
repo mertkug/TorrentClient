@@ -9,29 +9,9 @@ namespace TorrentClient.Bencode;
 public class Decoder : IDecoder
 {
     
-    public IBencodedBase Decode(Stream stream)
-    {
-        var bufferArray = Utility.ReadStream(stream);
-        
-        var memory = new ReadOnlyMemory<byte>(bufferArray);
-        
-        var span = memory.Span;
-        
-        var decodedValue = Decode(span);
-        
-        return decodedValue;
-    }
+    public IBencodedBase Decode(Stream stream) => Decode(Utility.ReadStream(stream));
     
-    public IBencodedBase DecodeFromBytes(byte[] input)
-    {
-        var memory = new ReadOnlyMemory<byte>(input);
-        
-        var span = memory.Span;
-        
-        var decodedValue = Decode(span);
-        
-        return decodedValue;
-    }
+    public IBencodedBase DecodeFromBytes(byte[] input) => Decode(input);
 
     public IBencodedBase DecodeString(ReadOnlySpan<byte> encoded, ref int currentIndex)
     {

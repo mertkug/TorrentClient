@@ -15,8 +15,7 @@ public interface IDecoder
 
     public BencodedDictionary<BencodedString, IBencodedBase> DecodeDictionary(ReadOnlySpan<byte> encoded,
         ref int currentIndex);
-
-
+    
     public IBencodedBase GetNextElement(ReadOnlySpan<byte> encoded, ref int currentIndex);
     public IBencodedBase Decode(ReadOnlySpan<byte> encoded);
 }
