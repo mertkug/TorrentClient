@@ -19,19 +19,19 @@ public class TorrentController : ControllerBase
     private readonly ILogger<TorrentController> _logger;
     private readonly IDecoder _decoder;
     private readonly TorrentService _torrentService;
-    private readonly TcpListener _tcpListener;
+    private readonly PeerListener _peerListener;
 
     public TorrentController(ILogger<TorrentController> logger, 
         IFileProvider fileProvider, 
         IDecoder decoder,
         TorrentService torrentService,
-        TcpListener tcpListener)
+        PeerListener peerListener)
     {
         _fileProvider = fileProvider;
         _logger = logger;
         _decoder = decoder;
         _torrentService = torrentService;
-        _tcpListener = tcpListener;
+        _peerListener = peerListener;
     }
 
     [HttpGet]
@@ -49,9 +49,15 @@ public class TorrentController : ControllerBase
         
         var torrent = _torrentService.ConvertToTorrent(decoded);
         _torrentService.SetPeers(torrent, await _torrentService.GetPeers(torrent));
-        var bytes = _tcpListener.PerformHandShake(torrent.Peers[0].Port, torrent.Peers[0].IpAddress, Client.PeerId, torrent.InfoHash);
-        var obj = TcpListener.ParseResponse(bytes);
         
-        return Ok(obj);
+        var peer = torrent.Peers[0];
+        var result = await _peerListener.QueueHandshakeAsync(peer.IpAddress, peer.Port, Client.PeerId, torrent.InfoHash);
+        
+        if (!result.Success)
+        {
+            return BadRequest(new { error = result.Error });
+        }
+        
+        return Ok(result.Response);
     }
 }

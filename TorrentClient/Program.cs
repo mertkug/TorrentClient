@@ -12,10 +12,13 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddScoped<IDecoder, Decoder>();
-builder.Services.AddScoped<Encoder>();
-builder.Services.AddScoped<TorrentService>();
-builder.Services.AddScoped<TcpListener>();
+
+builder.Services.AddSingleton<IDecoder, Decoder>();
+builder.Services.AddSingleton<Encoder>();
+
+builder.Services.AddSingleton<TorrentService>();
+builder.Services.AddSingleton<PeerListener>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<PeerListener>());
 
 IFileProvider physicalProvider = new PhysicalFileProvider(Directory.GetCurrentDirectory());
 builder.Services.AddSingleton(physicalProvider);
