@@ -20,7 +20,7 @@ public class Decoder : IDecoder
             throw new InvalidOperationException("Invalid encoded value");
         colonIndex += currentIndex; // Relative to start
 
-        var strLengthStr = Encoding.UTF8.GetString(encoded.Slice(currentIndex, colonIndex - currentIndex));
+        var strLengthStr = Encoding.UTF8.GetString(encoded[currentIndex..colonIndex]);
         if (!int.TryParse(strLengthStr, out var strLength))
             throw new InvalidOperationException("Invalid length value");
 
@@ -36,9 +36,7 @@ public class Decoder : IDecoder
         // Check if the string contains non-ASCII characters
         if (Utility.ContainsNonAscii(strValue))
         {
-            Console.WriteLine(strValue);
             currentIndex = colonIndex + 1 + strLength;
-
             return new BencodedByteStream(buffer);
         }
 
@@ -77,8 +75,7 @@ public class Decoder : IDecoder
             list.Value.Add(value);
         }
 
-        // Move the outer index past the 'e' character
-        currentIndex += innerIndex + 1;
+        currentIndex += innerIndex + 2;
 
         return list;
     }
@@ -94,19 +91,18 @@ public class Decoder : IDecoder
 
         while (innerIndex < dictContent.Length && dictContent[innerIndex] != (byte)'e')
         {
-            // Decode key
-            var key = (BencodedString)DecodeString(dictContent, ref innerIndex);
+            var keyResult = DecodeString(dictContent, ref innerIndex);
+            
+            if (keyResult is not BencodedString key)
+            {
+                throw new InvalidOperationException($"Dictionary key must be a string, got {keyResult.GetType().Name}");
+            }
 
-            // Decode value
             var value = GetNextElement(dictContent, ref innerIndex);
-
-            // Add key-value pair to dictionary
             dictionary[key] = value;
         }
-
-        // Move the outer index past the 'e' character
-        currentIndex += innerIndex + 1;
-
+        
+        currentIndex += innerIndex + 2;
         return new BencodedDictionary<BencodedString, IBencodedBase>(dictionary);
     }
     
