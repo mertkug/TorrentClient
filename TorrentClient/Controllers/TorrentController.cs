@@ -149,7 +149,8 @@ public class TorrentController : ControllerBase
                 await connection.SendInterestedAsync();
                 
                 await connection.RunMessageLoopAsync(
-                    async (conn, message) => await downloader.HandleMessageAsync(conn, message));
+                    async (conn, message) => await downloader.HandleMessageAsync(conn, message),
+                    downloader.CompletionToken);
                 
                 if (downloader.IsComplete)
                 {

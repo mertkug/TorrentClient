@@ -23,11 +23,22 @@ public class TorrentDownloader
     private int _currentPieceIndex = 0;
     private int _currentBlockOffset = 0;
     
+    // Pipelining - send multiple requests at once
+    private const int MaxPendingRequests = 25;
+    private readonly HashSet<(int pieceIndex, int blockOffset)> _pendingRequests = new();
+    
+    // Track which blocks we've received for each piece (for out-of-order handling)
+    private readonly Dictionary<int, HashSet<int>> _receivedBlocks = new();
+    
+    // Signal download completion to stop message loop
+    private readonly CancellationTokenSource _completionCts = new();
+    
     public int TotalPieces { get; }
     public int CompletedPieceCount => _completedPieces.Count(x => x);
     public long PieceLength => _torrent.Info.PieceLength;
     public int BlockSize => RequestMessage.DefaultBlockSize; // 16KB
     public bool IsComplete => CompletedPieceCount == TotalPieces;
+    public CancellationToken CompletionToken => _completionCts.Token;
 
     public TorrentDownloader(Torrent torrent, string outputDirectory, ILogger<TorrentDownloader> logger)
     {
@@ -58,10 +69,18 @@ public class TorrentDownloader
                 break;
 
             case UnchokeMessage:
-                _logger.LogInformation("Peer unchoked us - starting download");
+                _logger.LogInformation("Peer unchoked us - starting download with pipelining");
                 if (!connection.AmInterested)
                     await connection.SendInterestedAsync();
-                await RequestNextBlockAsync(connection);
+                
+                // Clear any stale pending requests from previous peer
+                _pendingRequests.Clear();
+                
+                // Fill the pipeline with initial requests
+                for (int i = 0; i < MaxPendingRequests; i++)
+                {
+                    await RequestNextBlockAsync(connection);
+                }
                 break;
 
             case PieceMessage piece:
@@ -76,6 +95,9 @@ public class TorrentDownloader
 
     private async Task HandlePieceAsync(PeerConnection connection, PieceMessage piece)
     {
+        // Remove from pending requests
+        _pendingRequests.Remove((piece.Index, piece.Begin));
+        
         lock (_lock)
         {
             // Initialize piece buffer if needed
@@ -87,18 +109,24 @@ public class TorrentDownloader
             Buffer.BlockCopy(piece.Block, 0, _pieces[piece.Index], piece.Begin, piece.Block.Length);
         }
 
-        _logger.LogDebug("Received: piece {Index}, offset {Offset}, {Bytes} bytes",
-            piece.Index, piece.Begin, piece.Block.Length);
+        _logger.LogDebug("Received: piece {Index}, offset {Offset}, {Bytes} bytes (pending: {Pending})",
+            piece.Index, piece.Begin, piece.Block.Length, _pendingRequests.Count);
 
-        // Check if piece is complete
-        var nextOffset = piece.Begin + piece.Block.Length;
-        var pieceComplete = nextOffset >= GetPieceSize(piece.Index);
+        // Track this block as received
+        if (!_receivedBlocks.ContainsKey(piece.Index))
+            _receivedBlocks[piece.Index] = new HashSet<int>();
+        _receivedBlocks[piece.Index].Add(piece.Begin);
+        
+        // Check if ALL blocks for this piece have been received
+        var expectedBlockCount = (int)Math.Ceiling((double)GetPieceSize(piece.Index) / BlockSize);
+        var pieceComplete = _receivedBlocks[piece.Index].Count >= expectedBlockCount;
 
         if (pieceComplete)
         {
             if (VerifyPiece(piece.Index))
             {
                 _completedPieces[piece.Index] = true;
+                _receivedBlocks.Remove(piece.Index); // Clean up tracking
                 _logger.LogInformation("✓ Piece {Index} complete and verified ({Completed}/{Total})",
                     piece.Index, CompletedPieceCount, TotalPieces);
 
@@ -113,12 +141,9 @@ public class TorrentDownloader
             {
                 _logger.LogWarning("✗ Piece {Index} failed verification - will re-download", piece.Index);
                 _pieces[piece.Index] = null; // Clear and retry
+                _receivedBlocks.Remove(piece.Index); // Clear received blocks tracking
                 _currentBlockOffset = 0;
             }
-        }
-        else
-        {
-            _currentBlockOffset = nextOffset;
         }
 
         // Request next block if not complete
@@ -129,22 +154,68 @@ public class TorrentDownloader
         else
         {
             _logger.LogInformation("🎉 Download complete! File saved to: {Path}", _outputPath);
+            _completionCts.Cancel(); // Signal completion to stop message loop
         }
     }
 
     private async Task RequestNextBlockAsync(PeerConnection connection)
     {
-        if (_currentPieceIndex >= TotalPieces)
-        {
-            _logger.LogInformation("All pieces requested");
+        // Check if pipeline is full
+        if (_pendingRequests.Count >= MaxPendingRequests)
             return;
+        
+        // Get next block to request
+        var (pieceIndex, blockOffset) = GetNextBlockToRequest();
+        if (pieceIndex < 0)
+            return; // Nothing left to request
+        
+        // Track and send request
+        _pendingRequests.Add((pieceIndex, blockOffset));
+        var blockLength = Math.Min(BlockSize, GetPieceSize(pieceIndex) - blockOffset);
+        await connection.SendRequestAsync(pieceIndex, blockOffset, blockLength);
+    }
+    
+    private (int pieceIndex, int blockOffset) GetNextBlockToRequest()
+    {
+        // Skip completed pieces and already-requested blocks
+        while (_currentPieceIndex < TotalPieces)
+        {
+            // Skip completed pieces
+            if (_completedPieces[_currentPieceIndex])
+            {
+                _currentPieceIndex++;
+                _currentBlockOffset = 0;
+                continue;
+            }
+            
+            // Check if this block is already pending
+            if (_pendingRequests.Contains((_currentPieceIndex, _currentBlockOffset)))
+            {
+                // Move to next block
+                _currentBlockOffset += BlockSize;
+                if (_currentBlockOffset >= GetPieceSize(_currentPieceIndex))
+                {
+                    _currentPieceIndex++;
+                    _currentBlockOffset = 0;
+                }
+                continue;
+            }
+            
+            // Found a block to request
+            var result = (_currentPieceIndex, _currentBlockOffset);
+            
+            // Advance for next call
+            _currentBlockOffset += BlockSize;
+            if (_currentBlockOffset >= GetPieceSize(_currentPieceIndex))
+            {
+                _currentPieceIndex++;
+                _currentBlockOffset = 0;
+            }
+            
+            return result;
         }
-
-        var pieceSize = GetPieceSize(_currentPieceIndex);
-        var remainingInPiece = pieceSize - _currentBlockOffset;
-        var blockLength = Math.Min(BlockSize, remainingInPiece);
-
-        await connection.SendRequestAsync(_currentPieceIndex, _currentBlockOffset, blockLength);
+        
+        return (-1, -1); // Nothing left
     }
 
     private int GetPieceSize(int pieceIndex)
